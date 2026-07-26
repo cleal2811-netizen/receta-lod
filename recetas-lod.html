@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="RecetaLOD"/>
+<title>RecetaLOD</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#050a12; --surface:#0c1520; --border:rgba(255,255,255,0.07);
+    --text:#d0e4f7; --muted:#3a5a78; --ok:#22c97a; --warn:#f5a623;
+    --error:#e84c6a; --accent:#2f86eb; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;position:relative}
+  header{display:flex;align-items:center;justify-content:space-between;padding:max(env(safe-area-inset-top),14px) 18px 12px;background:rgba(5,10,18,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+  .logo{display:flex;align-items:center;gap:9px}
+  .logo-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#1a5cb8,#0a3070);border:1px solid rgba(47,134,235,0.4);display:flex;align-items:center;justify-content:center;font-size:17px}
+  .logo-text{font-size:16px;font-weight:700;letter-spacing:-0.3px}
+  .logo-text span{color:var(--accent)}
+  .logo-sub{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:0.04em}
+  .counter-pill{font-family:var(--mono);font-size:11px;color:var(--muted);background:rgba(255,255,255,0.04);border:1px solid var(--border);padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px}
+  .dot-live{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+  nav{display:flex;background:rgba(5,10,18,0.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);flex-shrink:0}
+  nav button{flex:1;padding:11px 4px;border:none;background:transparent;color:var(--muted);font-size:11.5px;font-family:'Inter',sans-serif;font-weight:500;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(47,134,235,0.06)}
+  nav button .nav-icon{font-size:16px}
+  .view{display:none;flex:1;overflow-y:auto;overflow-x:hidden}
+  .view.active{display:flex;flex-direction:column}
+  .scroll-area{flex:1;overflow-y:auto;padding:16px;padding-bottom:24px}
+  .camera-zone{margin:16px;border-radius:16px;overflow:hidden;position:relative;border:1px solid var(--border);aspect-ratio:3/4;background:#000;flex-shrink:0}
+  #video{width:100%;height:100%;object-fit:cover;display:block}
+  .camera-overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .scan-frame{width:82%;aspect-ratio:3/4;border-radius:12px;border:2px solid rgba(47,134,235,0.7);box-shadow:0 0 0 9999px rgba(0,0,0,0.45);position:relative}
+  .scan-line{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanline 2s ease-in-out infinite;top:0}
+  .corner{position:absolute;width:18px;height:18px;border-color:var(--accent);border-style:solid;border-width:0}
+  .corner.tl{top:-1px;left:-1px;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
+  .corner.tr{top:-1px;right:-1px;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0}
+  .corner.bl{bottom:-1px;left:-1px;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px}
+  .corner.br{bottom:-1px;right:-1px;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
+  .camera-hint{font-size:12px;color:rgba(255,255,255,0.6);margin-top:10px;text-align:center;padding:0 20px}
+  .camera-actions{display:flex;gap:12px;padding:0 16px 16px;align-items:center;justify-content:center}
+  #btn-capture{width:68px;height:68px;border-radius:50%;border:3px solid #fff;background:rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;transition:all .15s;backdrop-filter:blur(4px);flex-shrink:0}
+  #btn-capture:active{transform:scale(0.93);background:rgba(255,255,255,0.25)}
+  #btn-gallery{width:48px;height:48px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.06);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all .15s}
+  #btn-gallery:active{background:rgba(255,255,255,0.12)}
+  #file-input{display:none}
+  .result-img-wrap{margin:16px 16px 0;border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative}
+  .result-img-wrap img{width:100%;display:block;max-height:220px;object-fit:cover}
+  .result-badge{position:absolute;top:10px;right:10px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;font-family:var(--mono);letter-spacing:0.04em}
+  .badge-ok{background:rgba(34,201,122,0.2);color:var(--ok);border:1px solid rgba(34,201,122,0.4)}
+  .badge-warn{background:rgba(245,166,35,0.2);color:var(--warn);border:1px solid rgba(245,166,35,0.4)}
+  .badge-error{background:rgba(232,76,106,0.2);color:var(--error);border:1px solid rgba(232,76,106,0.4)}
+  .result-scroll{padding:14px 16px 24px}
+  .verdict-box{border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid;display:flex;gap:12px;align-items:flex-start}
+  .verdict-ok{background:rgba(34,201,122,0.07);border-color:rgba(34,201,122,0.25)}
+  .verdict-warn{background:rgba(245,166,35,0.07);border-color:rgba(245,166,35,0.25)}
+  .verdict-error{background:rgba(232,76,106,0.07);border-color:rgba(232,76,106,0.25)}
+  .verdict-icon{font-size:24px;flex-shrink:0}
+  .verdict-title{font-size:14px;font-weight:700;margin-bottom:3px}
+  .verdict-msg{font-size:13px;color:var(--muted);line-height:1.5}
+  .checks-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .check-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:10px;padding:10px 13px}
+  .check-icon{font-size:15px;flex-shrink:0;width:22px;text-align:center}
+  .check-label{flex:1;font-size:13px;color:var(--text)}
+  .check-status{font-size:11px;font-family:var(--mono);font-weight:600}
+  .st-ok{color:var(--ok)}.st-warn{color:var(--warn)}.st-fail{color:var(--error)}.st-na{color:var(--muted)}
+  .section-title{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:0.06em;margin:16px 0 8px}
+  .doc-field{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:8px}
+  .doc-field-label{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:0.05em;margin-bottom:3px}
+  .doc-field-value{font-size:13.5px;color:var(--text)}
+  .save-btn{width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#1a5cb8);color:#fff;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;margin-top:16px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .save-btn:active{transform:scale(0.98);opacity:.9}
+  .new-scan-btn{width:100%;padding:13px;border-radius:12px;border:1px solid var(--border);cursor:pointer;background:rgba(255,255,255,0.03);color:var(--muted);font-size:14px;font-weight:500;font-family:'Inter',sans-serif;margin-top:8px;transition:all .15s}
+  .new-scan-btn:active{background:rgba(255,255,255,0.07)}
+  #view-loading{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:20px;padding:40px}
+  #view-loading.show{display:flex}
+  .loader-ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(47,134,235,0.2);border-top-color:var(--accent);animation:spin 0.8s linear infinite}
+  .loader-text{font-size:15px;color:var(--muted);text-align:center;line-height:1.6}
+  .loader-step{font-size:12px;color:var(--accent);font-family:var(--mono);margin-top:6px}
+  .history-empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+  .history-empty .empty-icon{font-size:44px;margin-bottom:14px}
+  .doc-card{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:all .15s}
+  .doc-card:active{background:rgba(255,255,255,0.05)}
+  .doc-card-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+  .doc-card-body{flex:1;min-width:0}
+  .doc-card-med{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc-card-dr{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .doc-card-date{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .doc-card-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;font-family:var(--mono);flex-shrink:0;margin-top:3px}
+  .dr-card{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:10px}
+  .dr-card-name{font-size:14px;font-weight:600;margin-bottom:6px}
+  .dr-card-stats{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .stat-pill{font-size:11.5px;padding:4px 10px;border-radius:20px;font-family:var(--mono)}
+  .stat-total{background:rgba(47,134,235,0.12);color:var(--accent);border:1px solid rgba(47,134,235,0.25)}
+  .stat-ok{background:rgba(34,201,122,0.1);color:var(--ok);border:1px solid rgba(34,201,122,0.2)}
+  .stat-fail{background:rgba(232,76,106,0.1);color:var(--error);border:1px solid rgba(232,76,106,0.2)}
+  .dr-bar-wrap{background:rgba(255,255,255,0.05);border-radius:4px;height:6px;overflow:hidden}
+  .dr-bar{height:100%;border-radius:4px;transition:width .4s}
+  .dr-reliability{font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--mono)}
+  /* setup screen */
+  .setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;gap:16px}
+  .setup-icon{font-size:52px}
+  .setup-title{font-size:20px;font-weight:700;color:var(--text)}
+  .setup-desc{font-size:13.5px;color:var(--muted);line-height:1.7;max-width:320px}
+  .setup-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(47,134,235,0.4);border-radius:12px;padding:13px 15px;color:var(--text);font-size:14px;font-family:var(--mono);letter-spacing:0.03em}
+  .setup-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,134,235,0.15)}
+  .setup-btn{width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#1a5cb8);color:#fff;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;transition:all .15s}
+  .setup-btn:active{transform:scale(0.98)}
+  .setup-link{font-size:12px;color:var(--accent);text-decoration:none}
+  @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes scanline{0%{top:4%}50%{top:92%}100%{top:4%}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeUp .3s ease}
+  textarea:focus,button:focus,input:focus{outline:none}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📋</div>
+      <div>
+        <div class="logo-text">Receta<span>LOD</span></div>
+        <div class="logo-sub">Ley Orgánica de Drogas · VE</div>
+      </div>
+    </div>
+    <div class="counter-pill">
+      <div class="dot-live"></div>
+      <span id="total-count">0 recetas</span>
+    </div>
+  </header>
+
+  <nav>
+    <button class="active" onclick="showTab('scan')" id="tab-scan">
+      <span class="nav-icon">📷</span>Escanear
+    </button>
+    <button onclick="showTab('history')" id="tab-history">
+      <span class="nav-icon">📂</span>Historial
+    </button>
+    <button onclick="showTab('doctors')" id="tab-doctors">
+      <span class="nav-icon">👨‍⚕️</span>Médicos
+    </button>
+  </nav>
+
+  <!-- SETUP: pedir API key si no existe -->
+  <div id="view-setup" class="view active" style="background:var(--bg)">
+    <div class="setup-screen">
+      <div class="setup-icon">🔑</div>
+      <div class="setup-title">Configura tu API key</div>
+      <div class="setup-desc">
+        RecetaLOD usa la IA de Google Gemini para analizar las recetas.<br><br>
+        Es <strong style="color:var(--ok)">100% gratis</strong>. Ve a
+        <a class="setup-link" href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>,
+        inicia sesión con tu cuenta Google y crea una clave de API.<br><br>
+        Empieza con <span style="font-family:var(--mono);color:var(--accent)">AIza...</span>
+      </div>
+      <input class="setup-input" id="apikey-input" type="password"
+        placeholder="Pega aquí tu API key de Google"
+        autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="setup-btn" onclick="saveKey()">✅ Guardar y comenzar</button>
+      <div style="font-size:11px;color:var(--muted)">La clave se guarda solo en tu teléfono, no se comparte con nadie.</div>
+    </div>
+  </div>
+
+  <!-- SCAN -->
+  <div class="view" id="view-scan">
+    <div class="camera-zone">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="camera-overlay">
+        <div class="scan-frame">
+          <div class="scan-line"></div>
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+        <div class="camera-hint">Centra la receta dentro del marco</div>
+      </div>
+    </div>
+    <div class="camera-actions">
+      <button id="btn-gallery" onclick="document.getElementById('file-input').click()">🖼</button>
+      <button id="btn-capture" onclick="capture()">⊙</button>
+      <button id="btn-settings" onclick="changeKey()" style="width:48px;height:48px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.06);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">⚙️</button>
+    </div>
+    <input type="file" id="file-input" accept="image/*" onchange="handleFile(event)"/>
+  </div>
+
+  <!-- LOADING -->
+  <div id="view-loading">
+    <div class="loader-ring"></div>
+    <div class="loader-text">
+      Analizando receta con Gemini…
+      <div class="loader-step" id="loader-step">Leyendo campos obligatorios</div>
+    </div>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="view" id="view-result">
+    <div class="result-img-wrap" id="result-img-wrap">
+      <img id="result-img" src="" alt="receta"/>
+      <div class="result-badge" id="result-badge"></div>
+    </div>
+    <div class="result-scroll">
+      <div class="verdict-box" id="verdict-box">
+        <div class="verdict-icon" id="verdict-icon"></div>
+        <div>
+          <div class="verdict-title" id="verdict-title"></div>
+          <div class="verdict-msg"   id="verdict-msg"></div>
+        </div>
+      </div>
+      <div class="section-title">CAMPOS VERIFICADOS (LOD)</div>
+      <div class="checks-grid" id="checks-grid"></div>
+      <div class="section-title">DATOS EXTRAÍDOS</div>
+      <div id="fields-grid"></div>
+      <div class="section-title">NOTA DEL FARMACÉUTICO</div>
+      <textarea id="nota-campo" placeholder="Observaciones personales (opcional)…"
+        style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:11px 13px;color:#d0e4f7;font-family:'Inter',sans-serif;font-size:13px;resize:none;min-height:70px;"></textarea>
+      <button class="save-btn" onclick="saveRecord()">💾 Guardar en historial</button>
+      <button class="new-scan-btn" onclick="newScan()">↩ Nueva receta</button>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="view" id="view-history">
+    <div class="scroll-area" id="history-list"></div>
+  </div>
+
+  <!-- MÉDICOS -->
+  <div class="view" id="view-doctors">
+    <div class="scroll-area" id="doctors-list"></div>
+  </div>
+
+</div>
+<script>
+// ── ESTADO ───────────────────────────────────────────────────
+let API_KEY        = localStorage.getItem("lod_gemini_key") || "";
+let currentB64     = null;
+let currentResult  = null;
+let stream         = null;
+let records        = JSON.parse(localStorage.getItem("lod_records") || "[]");
+
+// ── API KEY ───────────────────────────────────────────────────
+function saveKey() {
+  const k = document.getElementById("apikey-input").value.trim();
+  if (!k || !k.startsWith("AIza")) {
+    alert("La clave de Google debe empezar con 'AIza'. Verifica que la copiaste completa.");
+    return;
+  }
+  localStorage.setItem("lod_gemini_key", k);
+  API_KEY = k;
+  showTab("scan");
+}
+
+function changeKey() {
+  localStorage.removeItem("lod_gemini_key");
+  API_KEY = "";
+  showView("setup");
+}
+
+// ── CÁMARA ───────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:"environment", width:{ideal:1920}, height:{ideal:1080} }
+    });
+    document.getElementById("video").srcObject = stream;
+  } catch(e) { console.warn("Cámara:", e.message); }
+}
+
+function capture() {
+  const v = document.getElementById("video");
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth || 1280; c.height = v.videoHeight || 960;
+  c.getContext("2d").drawImage(v,0,0);
+  c.toBlob(b => processBlob(b), "image/jpeg", 0.92);
+}
+
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (f) processBlob(f);
+  e.target.value = "";
+}
+
+function processBlob(blob) {
+  const r = new FileReader();
+  r.onload = ev => {
+    currentB64 = ev.target.result.split(",")[1];
+    document.getElementById("result-img").src = ev.target.result;
+    analyze(currentB64);
+  };
+  r.readAsDataURL(blob);
+}
+
+// ── ANÁLISIS CON GEMINI ───────────────────────────────────────
+const STEPS = [
+  "Leyendo campos obligatorios",
+  "Verificando sello y firma",
+  "Revisando contra la LOD",
+  "Extrayendo datos del médico",
+  "Generando veredicto"
+];
+let stepTimer = null;
+
+function startSteps() {
+  let i = 0;
+  document.getElementById("loader-step").textContent = STEPS[0];
+  stepTimer = setInterval(() => {
+    i = (i+1) % STEPS.length;
+    document.getElementById("loader-step").textContent = STEPS[i];
+  }, 1600);
+}
+
+const PROMPT = `Eres un asistente farmacéutico venezolano especializado en la Ley Orgánica de Drogas (LOD).
+
+Analiza esta imagen de una receta de estupefacientes o psicotrópicos.
+Devuelve ÚNICAMENTE un objeto JSON válido, sin texto adicional, sin bloques de código, sin explicaciones.
+
+{
+  "veredicto": "VÁLIDA" | "OBSERVACIONES" | "INVÁLIDA",
+  "resumen": "frase corta explicando el veredicto",
+  "checks": [
+    {"campo": "Nombre del médico", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Número de registro médico", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Dirección del consultorio o institución", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Sello húmedo del médico o institución", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Firma del médico", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Nombre del paciente", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Cédula del paciente", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Nombre del medicamento (principio activo)", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Concentración y dosis", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Cantidad en números", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Cantidad en letras", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Fecha de emisión", "estado": "OK"|"FALTA"|"ILEGIBLE"|"N/A", "detalle": ""},
+    {"campo": "Sin tachones ni correcciones", "estado": "OK"|"FALTA"|"N/A", "detalle": ""},
+    {"campo": "Receta original (no fotocopia)", "estado": "OK"|"DUDOSO"|"N/A", "detalle": ""}
+  ],
+  "datos": {
+    "medico": "",
+    "registro": "",
+    "institucion": "",
+    "paciente": "",
+    "medicamento": "",
+    "dosis": "",
+    "cantidad": "",
+    "fecha": ""
+  },
+  "alertas": []
+}
+
+REGLA: el medicamento puede estar escrito a mano. Si ves algo escrito, márcalo OK o ILEGIBLE, nunca FALTA por ser manuscrito.`;
+
+async function analyze(b64) {
+  showLoading(true);
+  startSteps();
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+    const body = {
+      contents:[{ parts:[
+        { inline_data:{ mime_type:"image/jpeg", data: b64 } },
+        { text: PROMPT }
+      ]}],
+      generationConfig:{ temperature:0.1, maxOutputTokens:1500 }
+    };
+    const res  = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data?.error?.message || `Error ${res.status}`;
+      if (res.status === 400 && msg.includes("API_KEY")) throw new Error("API key inválida. Ve a ⚙️ para cambiarla.");
+      throw new Error(msg);
+    }
+
+    let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    raw = raw.replace(/```json|```/g,"").trim();
+    const json = JSON.parse(raw);
+    currentResult = json;
+    renderResult(json);
+  } catch(e) {
+    alert("⚠️ " + e.message);
+    newScan();
+  } finally {
+    clearInterval(stepTimer);
+    showLoading(false);
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderResult(r) {
+  const v   = r.veredicto;
+  const cls = v==="VÁLIDA" ? "badge-ok" : v==="OBSERVACIONES" ? "badge-warn" : "badge-error";
+  const vcls= v==="VÁLIDA" ? "verdict-ok": v==="OBSERVACIONES"? "verdict-warn" : "verdict-error";
+
+  document.getElementById("result-badge").className = "result-badge " + cls;
+  document.getElementById("result-badge").textContent = v;
+
+  const vb = document.getElementById("verdict-box");
+  vb.className = "verdict-box " + vcls;
+  document.getElementById("verdict-icon").textContent  = v==="VÁLIDA"?"✅":v==="OBSERVACIONES"?"⚠️":"❌";
+  document.getElementById("verdict-title").textContent = v==="VÁLIDA"?"Receta válida":v==="OBSERVACIONES"?"Con observaciones":"Receta inválida";
+  document.getElementById("verdict-msg").textContent   = r.resumen;
+
+  const icons = {OK:"✅",FALTA:"❌",ILEGIBLE:"⚠️",DUDOSO:"⚠️","N/A":"—"};
+  const clss  = {OK:"st-ok",FALTA:"st-fail",ILEGIBLE:"st-warn",DUDOSO:"st-warn","N/A":"st-na"};
+  const grid  = document.getElementById("checks-grid");
+  grid.innerHTML = "";
+  (r.checks||[]).forEach(c => {
+    const d = document.createElement("div");
+    d.className = "check-row fade-in";
+    d.innerHTML = `<span class="check-icon">${icons[c.estado]||"?"}</span>
+      <span class="check-label">${c.campo}${c.detalle?`<br><small style="color:var(--muted);font-size:11px">${c.detalle}</small>`:""}</span>
+      <span class="check-status ${clss[c.estado]||""}">${c.estado}</span>`;
+    grid.appendChild(d);
+  });
+
+  const labels = {medico:"Médico",registro:"Reg. médico",institucion:"Institución",paciente:"Paciente",medicamento:"Medicamento",dosis:"Dosis",cantidad:"Cantidad",fecha:"Fecha"};
+  const fg = document.getElementById("fields-grid");
+  fg.innerHTML = "";
+  Object.entries(r.datos||{}).forEach(([k,val]) => {
+    if (!val) return;
+    fg.innerHTML += `<div class="doc-field fade-in"><div class="doc-field-label">${labels[k]||k}</div><div class="doc-field-value">${val}</div></div>`;
+  });
+
+  document.getElementById("nota-campo").value = "";
+  showView("result");
+}
+
+// ── GUARDAR ───────────────────────────────────────────────────
+function saveRecord() {
+  if (!currentResult) return;
+  records.unshift({
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    veredicto: currentResult.veredicto,
+    datos:     currentResult.datos,
+    resumen:   currentResult.resumen,
+    alertas:   currentResult.alertas || [],
+    nota:      document.getElementById("nota-campo").value.trim(),
+  });
+  localStorage.setItem("lod_records", JSON.stringify(records));
+  updateCounter();
+  const btn = document.querySelector(".save-btn");
+  btn.textContent = "✅ Guardado";
+  btn.style.background = "linear-gradient(135deg,var(--ok),#179e5a)";
+  setTimeout(() => { btn.innerHTML = "💾 Guardar en historial"; btn.style.background = ""; }, 2000);
+}
+
+// ── HISTORIAL ─────────────────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById("history-list");
+  if (!records.length) {
+    el.innerHTML = `<div class="history-empty"><div class="empty-icon">📂</div>No hay recetas guardadas aún.</div>`;
+    return;
+  }
+  const icons = {"VÁLIDA":"✅","OBSERVACIONES":"⚠️","INVÁLIDA":"❌"};
+  const bcls  = {"VÁLIDA":"badge-ok","OBSERVACIONES":"badge-warn","INVÁLIDA":"badge-error"};
+  el.innerHTML = records.map(r => {
+    const d = r.datos||{};
+    const f = new Date(r.timestamp).toLocaleDateString("es-VE",{day:"2-digit",month:"short",year:"numeric"});
+    return `<div class="doc-card fade-in" onclick="alert('${(d.medicamento||"").replace(/'/g,"'")}\\n👨‍⚕️ ${(d.medico||"—").replace(/'/g,"'")}\\n📅 ${f}\\n\\n${r.veredicto}: ${(r.resumen||"").replace(/'/g,"'")}${r.nota?"\\n\\nNota: "+r.nota:""}')">
+      <div class="doc-card-icon">${icons[r.veredicto]||"📋"}</div>
+      <div class="doc-card-body">
+        <div class="doc-card-med">${d.medicamento||"Medicamento no identificado"}</div>
+        <div class="doc-card-dr">Dr. ${d.medico||"Médico desconocido"}</div>
+        <div class="doc-card-date">${f} · ${d.paciente||"Paciente no id."}</div>
+      </div>
+      <div class="doc-card-badge result-badge ${bcls[r.veredicto]||""}">${r.veredicto}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── MÉDICOS ───────────────────────────────────────────────────
+function renderDoctors() {
+  const el = document.getElementById("doctors-list");
+  const map = {};
+  records.forEach(r => {
+    const name = ((r.datos||{}).medico||"Sin identificar").trim();
+    if (!map[name]) map[name] = {total:0,ok:0,obs:0,fail:0};
+    map[name].total++;
+    if (r.veredicto==="VÁLIDA") map[name].ok++;
+    else if (r.veredicto==="OBSERVACIONES") map[name].obs++;
+    else map[name].fail++;
+  });
+  const entries = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+  if (!entries.length) {
+    el.innerHTML = `<div class="history-empty"><div class="empty-icon">👨‍⚕️</div>Sin datos aún.<br>Guarda recetas para ver el análisis por médico.</div>`;
+    return;
+  }
+  el.innerHTML = entries.map(([name,s]) => {
+    const pct = Math.round((s.ok/s.total)*100);
+    const clr = pct>=80?"var(--ok)":pct>=50?"var(--warn)":"var(--error)";
+    return `<div class="dr-card fade-in">
+      <div class="dr-card-name">👨‍⚕️ ${name}</div>
+      <div class="dr-card-stats">
+        <span class="stat-pill stat-total">${s.total} receta${s.total!==1?"s":""}</span>
+        <span class="stat-pill stat-ok">✅ ${s.ok} válida${s.ok!==1?"s":""}</span>
+        ${s.obs?`<span class="stat-pill" style="background:rgba(245,166,35,0.1);color:var(--warn);border:1px solid rgba(245,166,35,0.2)">⚠️ ${s.obs}</span>`:""}
+        ${s.fail?`<span class="stat-pill stat-fail">❌ ${s.fail}</span>`:""}
+      </div>
+      <div class="dr-bar-wrap"><div class="dr-bar" style="width:${pct}%;background:${clr}"></div></div>
+      <div class="dr-reliability">${pct}% recetas correctas</div>
+    </div>`;
+  }).join("");
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("view-loading").classList.remove("show");
+  if (name==="scan") {
+    document.getElementById("view-scan").classList.add("active");
+    document.getElementById("tab-scan").classList.add("active");
+    startCamera();
+  } else if (name==="history") {
+    document.getElementById("view-history").classList.add("active");
+    document.getElementById("tab-history").classList.add("active");
+    renderHistory();
+  } else if (name==="doctors") {
+    document.getElementById("view-doctors").classList.add("active");
+    document.getElementById("tab-doctors").classList.add("active");
+    renderDoctors();
+  }
+}
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+name).classList.add("active");
+}
+
+function showLoading(show) {
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  if (show) document.getElementById("view-loading").classList.add("show");
+  else      document.getElementById("view-loading").classList.remove("show");
+}
+
+function newScan() { currentResult=null; currentB64=null; showTab("scan"); }
+function updateCounter() {
+  document.getElementById("total-count").textContent = `${records.length} receta${records.length!==1?"s":""}`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+updateCounter();
+if (API_KEY) showTab("scan");
+// si no hay key, se queda en view-setup que ya es .active por defecto
+</script>
+</body>
+</html>
